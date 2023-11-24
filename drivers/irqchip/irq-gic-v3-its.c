@@ -39,18 +39,14 @@
 
 #include "irq-gic-common.h"
 
-#define ITS_FLAGS_CMDQ_NEEDS_FLUSHING		(1ULL << 0)
-#define ITS_FLAGS_WORKAROUND_CAVIUM_22375	(1ULL << 1)
-#define ITS_FLAGS_WORKAROUND_CAVIUM_23144	(1ULL << 2)
-#define ITS_FLAGS_FORCE_NON_SHAREABLE		(1ULL << 3)
+#define ITS_FLAGS_CMDQ_NEEDS_FLUSHING (1ULL << 0)
+#define ITS_FLAGS_WORKAROUND_CAVIUM_22375 (1ULL << 1)
+#define ITS_FLAGS_WORKAROUND_CAVIUM_23144 (1ULL << 2)
+#define ITS_FLAGS_FORCE_NON_SHAREABLE (1ULL << 3)
 
-#define RDIST_FLAGS_PROPBASE_NEEDS_FLUSHING	(1 << 0)
-#define RDIST_FLAGS_RD_TABLES_PREALLOCATED	(1 << 1)
-#define RDIST_FLAGS_FORCE_NON_SHAREABLE		(1 << 2)
-
-#define RD_LOCAL_LPI_ENABLED                    BIT(0)
-#define RD_LOCAL_PENDTABLE_PREALLOCATED         BIT(1)
-#define RD_LOCAL_MEMRESERVE_DONE                BIT(2)
+#define RD_LOCAL_LPI_ENABLED BIT(0)
+#define RD_LOCAL_PENDTABLE_PREALLOCATED BIT(1)
+#define RD_LOCAL_MEMRESERVE_DONE BIT(2)
 
 static u32 lpi_id_bits;
 
@@ -59,11 +55,11 @@ static u32 lpi_id_bits;
  * deal with (one configuration byte per interrupt). PENDBASE has to
  * be 64kB aligned (one bit per LPI, plus 8192 bits for SPI/PPI/SGI).
  */
-#define LPI_NRBITS		lpi_id_bits
-#define LPI_PROPBASE_SZ		ALIGN(BIT(LPI_NRBITS), SZ_64K)
-#define LPI_PENDBASE_SZ		ALIGN(BIT(LPI_NRBITS) / 8, SZ_64K)
+#define LPI_NRBITS lpi_id_bits
+#define LPI_PROPBASE_SZ ALIGN(BIT(LPI_NRBITS), SZ_64K)
+#define LPI_PENDBASE_SZ ALIGN(BIT(LPI_NRBITS) / 8, SZ_64K)
 
-#define LPI_PROP_DEFAULT_PRIO	GICD_INT_DEF_PRI
+#define LPI_PROP_DEFAULT_PRIO GICD_INT_DEF_PRI
 
 /*
  * Collection structure - just an ID, and a redistributor address to
@@ -71,8 +67,8 @@ static u32 lpi_id_bits;
  * CPU.
  */
 struct its_collection {
-	u64			target_address;
-	u16			col_id;
+	u64 target_address;
+	u16 col_id;
 };
 
 /*
@@ -80,10 +76,10 @@ struct its_collection {
  * value of BASER register configuration and ITS page size.
  */
 struct its_baser {
-	void		*base;
-	u64		val;
-	u32		order;
-	u32		psz;
+	void *base;
+	u64 val;
+	u32 order;
+	u32 psz;
 };
 
 struct its_device;
@@ -98,62 +94,62 @@ struct its_device;
  * list.
  */
 struct its_node {
-	raw_spinlock_t		lock;
-	struct mutex		dev_alloc_lock;
-	struct list_head	entry;
-	void __iomem		*base;
-	void __iomem		*sgir_base;
-	phys_addr_t		phys_base;
-	struct its_cmd_block	*cmd_base;
-	struct its_cmd_block	*cmd_write;
-	struct its_baser	tables[GITS_BASER_NR_REGS];
-	struct its_collection	*collections;
-	struct fwnode_handle	*fwnode_handle;
-	u64			(*get_msi_base)(struct its_device *its_dev);
-	u64			typer;
-	u64			cbaser_save;
-	u32			ctlr_save;
-	u32			mpidr;
-	struct list_head	its_device_list;
-	u64			flags;
-	unsigned long		list_nr;
-	int			numa_node;
-	unsigned int		msi_domain_flags;
-	u32			pre_its_base; /* for Socionext Synquacer */
-	int			vlpi_redist_offset;
+	raw_spinlock_t lock;
+	struct mutex dev_alloc_lock;
+	struct list_head entry;
+	void __iomem *base;
+	void __iomem *sgir_base;
+	phys_addr_t phys_base;
+	struct its_cmd_block *cmd_base;
+	struct its_cmd_block *cmd_write;
+	struct its_baser tables[GITS_BASER_NR_REGS];
+	struct its_collection *collections;
+	struct fwnode_handle *fwnode_handle;
+	u64 (*get_msi_base)(struct its_device *its_dev);
+	u64 typer;
+	u64 cbaser_save;
+	u32 ctlr_save;
+	u32 mpidr;
+	struct list_head its_device_list;
+	u64 flags;
+	unsigned long list_nr;
+	int numa_node;
+	unsigned int msi_domain_flags;
+	u32 pre_its_base; /* for Socionext Synquacer */
+	int vlpi_redist_offset;
 };
 
-#define is_v4(its)		(!!((its)->typer & GITS_TYPER_VLPIS))
-#define is_v4_1(its)		(!!((its)->typer & GITS_TYPER_VMAPP))
-#define device_ids(its)		(FIELD_GET(GITS_TYPER_DEVBITS, (its)->typer) + 1)
+#define is_v4(its) (!!((its)->typer & GITS_TYPER_VLPIS))
+#define is_v4_1(its) (!!((its)->typer & GITS_TYPER_VMAPP))
+#define device_ids(its) (FIELD_GET(GITS_TYPER_DEVBITS, (its)->typer) + 1)
 
-#define ITS_ITT_ALIGN		SZ_256
+#define ITS_ITT_ALIGN SZ_256
 
 /* The maximum number of VPEID bits supported by VLPI commands */
-#define ITS_MAX_VPEID_BITS						\
-	({								\
-		int nvpeid = 16;					\
-		if (gic_rdists->has_rvpeid &&				\
-		    gic_rdists->gicd_typer2 & GICD_TYPER2_VIL)		\
-			nvpeid = 1 + (gic_rdists->gicd_typer2 &		\
-				      GICD_TYPER2_VID);			\
-									\
-		nvpeid;							\
+#define ITS_MAX_VPEID_BITS                                                    \
+	({                                                                    \
+		int nvpeid = 16;                                              \
+		if (gic_rdists->has_rvpeid &&                                 \
+		    gic_rdists->gicd_typer2 & GICD_TYPER2_VIL)                \
+			nvpeid = 1 +                                          \
+				 (gic_rdists->gicd_typer2 & GICD_TYPER2_VID); \
+                                                                              \
+		nvpeid;                                                       \
 	})
-#define ITS_MAX_VPEID		(1 << (ITS_MAX_VPEID_BITS))
+#define ITS_MAX_VPEID (1 << (ITS_MAX_VPEID_BITS))
 
 /* Convert page order to size in bytes */
-#define PAGE_ORDER_TO_SIZE(o)	(PAGE_SIZE << (o))
+#define PAGE_ORDER_TO_SIZE(o) (PAGE_SIZE << (o))
 
 struct event_lpi_map {
-	unsigned long		*lpi_map;
-	u16			*col_map;
-	irq_hw_number_t		lpi_base;
-	int			nr_lpis;
-	raw_spinlock_t		vlpi_lock;
-	struct its_vm		*vm;
-	struct its_vlpi_map	*vlpi_maps;
-	int			nr_vlpis;
+	unsigned long *lpi_map;
+	u16 *col_map;
+	irq_hw_number_t lpi_base;
+	int nr_lpis;
+	raw_spinlock_t vlpi_lock;
+	struct its_vm *vm;
+	struct its_vlpi_map *vlpi_maps;
+	int nr_vlpis;
 };
 
 /*
@@ -163,26 +159,26 @@ struct event_lpi_map {
  * indicates which one.
  */
 struct its_device {
-	struct list_head	entry;
-	struct its_node		*its;
-	struct event_lpi_map	event_map;
-	void			*itt;
-	u32			itt_sz;
-	u32			nr_ites;
-	u32			device_id;
-	bool			shared;
+	struct list_head entry;
+	struct its_node *its;
+	struct event_lpi_map event_map;
+	void *itt;
+	u32 itt_sz;
+	u32 nr_ites;
+	u32 device_id;
+	bool shared;
 };
 
 static struct {
-	raw_spinlock_t		lock;
-	struct its_device	*dev;
-	struct its_vpe		**vpes;
-	int			next_victim;
+	raw_spinlock_t lock;
+	struct its_device *dev;
+	struct its_vpe **vpes;
+	int next_victim;
 } vpe_proxy;
 
 struct cpu_lpi_count {
-	atomic_t	managed;
-	atomic_t	unmanaged;
+	atomic_t managed;
+	atomic_t unmanaged;
 };
 
 static DEFINE_PER_CPU(struct cpu_lpi_count, cpu_lpi_count);
@@ -198,10 +194,10 @@ static DEFINE_RAW_SPINLOCK(vmovp_lock);
 
 static DEFINE_IDA(its_vpeid_ida);
 
-#define gic_data_rdist()		(raw_cpu_ptr(gic_rdists->rdist))
-#define gic_data_rdist_cpu(cpu)		(per_cpu_ptr(gic_rdists->rdist, cpu))
-#define gic_data_rdist_rd_base()	(gic_data_rdist()->rd_base)
-#define gic_data_rdist_vlpi_base()	(gic_data_rdist_rd_base() + SZ_128K)
+#define gic_data_rdist() (raw_cpu_ptr(gic_rdists->rdist))
+#define gic_data_rdist_cpu(cpu) (per_cpu_ptr(gic_rdists->rdist, cpu))
+#define gic_data_rdist_rd_base() (gic_data_rdist()->rd_base)
+#define gic_data_rdist_vlpi_base() (gic_data_rdist_rd_base() + SZ_128K)
 
 /*
  * Skip ITSs that have no vLPIs mapped, unless we're on GICv4.1, as we
@@ -243,7 +239,7 @@ static struct its_collection *dev_event_to_col(struct its_device *its_dev,
 }
 
 static struct its_vlpi_map *dev_event_to_vlpi_map(struct its_device *its_dev,
-					       u32 event)
+						  u32 event)
 {
 	if (WARN_ON_ONCE(event >= its_dev->event_map.nr_lpis))
 		return NULL;
@@ -438,13 +434,14 @@ struct its_cmd_desc {
  */
 struct its_cmd_block {
 	union {
-		u64	raw_cmd[4];
-		__le64	raw_cmd_le[4];
+		u64 raw_cmd[4];
+		__le64 raw_cmd_le[4];
 	};
 };
 
-#define ITS_CMD_QUEUE_SZ		SZ_64K
-#define ITS_CMD_QUEUE_NR_ENTRIES	(ITS_CMD_QUEUE_SZ / sizeof(struct its_cmd_block))
+#define ITS_CMD_QUEUE_SZ SZ_64K
+#define ITS_CMD_QUEUE_NR_ENTRIES \
+	(ITS_CMD_QUEUE_SZ / sizeof(struct its_cmd_block))
 
 typedef struct its_collection *(*its_cmd_builder_t)(struct its_node *,
 						    struct its_cmd_block *,
@@ -796,15 +793,18 @@ static struct its_vpe *its_build_vmapp_cmd(struct its_node *its,
 
 	if (!desc->its_vmapp_cmd.valid) {
 		if (is_v4_1(its)) {
-			alloc = !atomic_dec_return(&desc->its_vmapp_cmd.vpe->vmapp_count);
+			alloc = !atomic_dec_return(
+				&desc->its_vmapp_cmd.vpe->vmapp_count);
 			its_encode_alloc(cmd, alloc);
 		}
 
 		goto out;
 	}
 
-	vpt_addr = virt_to_phys(page_address(desc->its_vmapp_cmd.vpe->vpt_page));
-	target = desc->its_vmapp_cmd.col->target_address + its->vlpi_redist_offset;
+	vpt_addr =
+		virt_to_phys(page_address(desc->its_vmapp_cmd.vpe->vpt_page));
+	target = desc->its_vmapp_cmd.col->target_address +
+		 its->vlpi_redist_offset;
 
 	its_encode_target(cmd, target);
 	its_encode_vpt_addr(cmd, vpt_addr);
@@ -813,7 +813,8 @@ static struct its_vpe *its_build_vmapp_cmd(struct its_node *its,
 	if (!is_v4_1(its))
 		goto out;
 
-	vconf_addr = virt_to_phys(page_address(desc->its_vmapp_cmd.vpe->its_vm->vprop_page));
+	vconf_addr = virt_to_phys(
+		page_address(desc->its_vmapp_cmd.vpe->its_vm->vprop_page));
 
 	alloc = !atomic_fetch_inc(&desc->its_vmapp_cmd.vpe->vmapp_count);
 
@@ -887,7 +888,8 @@ static struct its_vpe *its_build_vmovp_cmd(struct its_node *its,
 {
 	u64 target;
 
-	target = desc->its_vmovp_cmd.col->target_address + its->vlpi_redist_offset;
+	target = desc->its_vmovp_cmd.col->target_address +
+		 its->vlpi_redist_offset;
 	its_encode_cmd(cmd, GITS_CMD_VMOVP);
 	its_encode_seq_num(cmd, desc->its_vmovp_cmd.seq_num);
 	its_encode_its_list(cmd, desc->its_vmovp_cmd.its_list);
@@ -896,7 +898,8 @@ static struct its_vpe *its_build_vmovp_cmd(struct its_node *its,
 
 	if (is_v4_1(its)) {
 		its_encode_db(cmd, true);
-		its_encode_vmovp_default_db(cmd, desc->its_vmovp_cmd.vpe->vpe_db_lpi);
+		its_encode_vmovp_default_db(
+			cmd, desc->its_vmovp_cmd.vpe->vpe_db_lpi);
 	}
 
 	its_fixup_cmd(cmd);
@@ -1005,7 +1008,8 @@ static int its_queue_full(struct its_node *its)
 	int ridx;
 
 	widx = its->cmd_write - its->cmd_base;
-	ridx = readl_relaxed(its->base + GITS_CREADR) / sizeof(struct its_cmd_block);
+	ridx = readl_relaxed(its->base + GITS_CREADR) /
+	       sizeof(struct its_cmd_block);
 
 	/* This is incredibly unlikely to happen, unless the ITS locks up. */
 	if (((widx + 1) % ITS_CMD_QUEUE_NR_ENTRIES) == ridx)
@@ -1017,7 +1021,7 @@ static int its_queue_full(struct its_node *its)
 static struct its_cmd_block *its_allocate_entry(struct its_node *its)
 {
 	struct its_cmd_block *cmd;
-	u32 count = 1000000;	/* 1s! */
+	u32 count = 1000000; /* 1s! */
 
 	while (its_queue_full(its)) {
 		count--;
@@ -1065,12 +1069,11 @@ static void its_flush_cmd(struct its_node *its, struct its_cmd_block *cmd)
 		dsb(ishst);
 }
 
-static int its_wait_for_range_completion(struct its_node *its,
-					 u64	prev_idx,
+static int its_wait_for_range_completion(struct its_node *its, u64 prev_idx,
 					 struct its_cmd_block *to)
 {
 	u64 rd_idx, to_idx, linear_idx;
-	u32 count = 1000000;	/* 1s! */
+	u32 count = 1000000; /* 1s! */
 
 	/* Linearize to_idx if the command set has wrapped around */
 	to_idx = its_cmd_ptr_to_offset(its, to);
@@ -1111,43 +1114,42 @@ static int its_wait_for_range_completion(struct its_node *its,
 }
 
 /* Warning, macro hell follows */
-#define BUILD_SINGLE_CMD_FUNC(name, buildtype, synctype, buildfn)	\
-void name(struct its_node *its,						\
-	  buildtype builder,						\
-	  struct its_cmd_desc *desc)					\
-{									\
-	struct its_cmd_block *cmd, *sync_cmd, *next_cmd;		\
-	synctype *sync_obj;						\
-	unsigned long flags;						\
-	u64 rd_idx;							\
-									\
-	raw_spin_lock_irqsave(&its->lock, flags);			\
-									\
-	cmd = its_allocate_entry(its);					\
-	if (!cmd) {		/* We're soooooo screewed... */		\
-		raw_spin_unlock_irqrestore(&its->lock, flags);		\
-		return;							\
-	}								\
-	sync_obj = builder(its, cmd, desc);				\
-	its_flush_cmd(its, cmd);					\
-									\
-	if (sync_obj) {							\
-		sync_cmd = its_allocate_entry(its);			\
-		if (!sync_cmd)						\
-			goto post;					\
-									\
-		buildfn(its, sync_cmd, sync_obj);			\
-		its_flush_cmd(its, sync_cmd);				\
-	}								\
-									\
-post:									\
-	rd_idx = readl_relaxed(its->base + GITS_CREADR);		\
-	next_cmd = its_post_commands(its);				\
-	raw_spin_unlock_irqrestore(&its->lock, flags);			\
-									\
-	if (its_wait_for_range_completion(its, rd_idx, next_cmd))	\
-		pr_err_ratelimited("ITS cmd %ps failed\n", builder);	\
-}
+#define BUILD_SINGLE_CMD_FUNC(name, buildtype, synctype, buildfn)            \
+	void name(struct its_node *its, buildtype builder,                   \
+		  struct its_cmd_desc *desc)                                 \
+	{                                                                    \
+		struct its_cmd_block *cmd, *sync_cmd, *next_cmd;             \
+		synctype *sync_obj;                                          \
+		unsigned long flags;                                         \
+		u64 rd_idx;                                                  \
+                                                                             \
+		raw_spin_lock_irqsave(&its->lock, flags);                    \
+                                                                             \
+		cmd = its_allocate_entry(its);                               \
+		if (!cmd) { /* We're soooooo screewed... */                  \
+			raw_spin_unlock_irqrestore(&its->lock, flags);       \
+			return;                                              \
+		}                                                            \
+		sync_obj = builder(its, cmd, desc);                          \
+		its_flush_cmd(its, cmd);                                     \
+                                                                             \
+		if (sync_obj) {                                              \
+			sync_cmd = its_allocate_entry(its);                  \
+			if (!sync_cmd)                                       \
+				goto post;                                   \
+                                                                             \
+			buildfn(its, sync_cmd, sync_obj);                    \
+			its_flush_cmd(its, sync_cmd);                        \
+		}                                                            \
+                                                                             \
+post:                                                                        \
+		rd_idx = readl_relaxed(its->base + GITS_CREADR);             \
+		next_cmd = its_post_commands(its);                           \
+		raw_spin_unlock_irqrestore(&its->lock, flags);               \
+                                                                             \
+		if (its_wait_for_range_completion(its, rd_idx, next_cmd))    \
+			pr_err_ratelimited("ITS cmd %ps failed\n", builder); \
+	}
 
 static void its_build_sync_cmd(struct its_node *its,
 			       struct its_cmd_block *sync_cmd,
@@ -1162,9 +1164,9 @@ static void its_build_sync_cmd(struct its_node *its,
 static BUILD_SINGLE_CMD_FUNC(its_send_single_command, its_cmd_builder_t,
 			     struct its_collection, its_build_sync_cmd)
 
-static void its_build_vsync_cmd(struct its_node *its,
-				struct its_cmd_block *sync_cmd,
-				struct its_vpe *sync_vpe)
+	static void its_build_vsync_cmd(struct its_node *its,
+					struct its_cmd_block *sync_cmd,
+					struct its_vpe *sync_vpe)
 {
 	its_encode_cmd(sync_cmd, GITS_CMD_VSYNC);
 	its_encode_vpeid(sync_cmd, sync_vpe->vpe_id);
@@ -1175,7 +1177,7 @@ static void its_build_vsync_cmd(struct its_node *its,
 static BUILD_SINGLE_CMD_FUNC(its_send_single_vcommand, its_cmd_vbuilder_t,
 			     struct its_vpe, its_build_vsync_cmd)
 
-static void its_send_int(struct its_device *dev, u32 event_id)
+	static void its_send_int(struct its_device *dev, u32 event_id)
 {
 	struct its_cmd_desc desc;
 
@@ -1237,8 +1239,8 @@ static void its_send_mapti(struct its_device *dev, u32 irq_id, u32 id)
 	its_send_single_command(dev->its, its_build_mapti_cmd, &desc);
 }
 
-static void its_send_movi(struct its_device *dev,
-			  struct its_collection *col, u32 id)
+static void its_send_movi(struct its_device *dev, struct its_collection *col,
+			  u32 id)
 {
 	struct its_cmd_desc desc;
 
@@ -1295,8 +1297,8 @@ static void its_send_vmovi(struct its_device *dev, u32 id)
 	its_send_single_vcommand(dev->its, its_build_vmovi_cmd, &desc);
 }
 
-static void its_send_vmapp(struct its_node *its,
-			   struct its_vpe *vpe, bool valid)
+static void its_send_vmapp(struct its_node *its, struct its_vpe *vpe,
+			   bool valid)
 {
 	struct its_cmd_desc desc;
 
@@ -1480,7 +1482,7 @@ static void direct_lpi_inv(struct irq_data *d)
 
 		WARN_ON(!is_v4_1(its_dev->its));
 
-		val  = GICR_INVLPIR_V;
+		val = GICR_INVLPIR_V;
 		val |= FIELD_PREP(GICR_INVLPIR_VPEID, map->vpe->vpe_id);
 		val |= FIELD_PREP(GICR_INVLPIR_INTID, map->vintid);
 	} else {
@@ -1587,7 +1589,7 @@ static unsigned int cpumask_pick_least_loaded(struct irq_data *d,
 		int this_count = its_read_lpi_count(d, tmp);
 		if (this_count < count) {
 			cpu = tmp;
-		        count = this_count;
+			count = this_count;
 		}
 	}
 
@@ -1598,8 +1600,7 @@ static unsigned int cpumask_pick_least_loaded(struct irq_data *d,
  * As suggested by Thomas Gleixner in:
  * https://lore.kernel.org/r/87h80q2aoc.fsf@nanos.tec.linutronix.de
  */
-static int its_select_cpu(struct irq_data *d,
-			  const struct cpumask *aff_mask)
+static int its_select_cpu(struct irq_data *d, const struct cpumask *aff_mask)
 {
 	struct its_device *its_dev = irq_data_get_irq_chip_data(d);
 	static DEFINE_RAW_SPINLOCK(tmpmask_lock);
@@ -1639,7 +1640,8 @@ static int its_select_cpu(struct irq_data *d,
 				goto out;
 
 			/* If we can't cross sockets, give up */
-			if ((its_dev->its->flags & ITS_FLAGS_WORKAROUND_CAVIUM_23144))
+			if ((its_dev->its->flags &
+			     ITS_FLAGS_WORKAROUND_CAVIUM_23144))
 				goto out;
 
 			/* If the above failed, expand the search */
@@ -1666,7 +1668,8 @@ static int its_select_cpu(struct irq_data *d,
 out:
 	raw_spin_unlock_irqrestore(&tmpmask_lock, flags);
 
-	pr_debug("IRQ%d -> %*pbl CPU%d\n", d->irq, cpumask_pr_args(aff_mask), cpu);
+	pr_debug("IRQ%d -> %*pbl CPU%d\n", d->irq, cpumask_pr_args(aff_mask),
+		 cpu);
 	return cpu;
 }
 
@@ -1726,16 +1729,15 @@ static void its_irq_compose_msi_msg(struct irq_data *d, struct msi_msg *msg)
 	its = its_dev->its;
 	addr = its->get_msi_base(its_dev);
 
-	msg->address_lo		= lower_32_bits(addr);
-	msg->address_hi		= upper_32_bits(addr);
-	msg->data		= its_get_event_id(d);
+	msg->address_lo = lower_32_bits(addr);
+	msg->address_hi = upper_32_bits(addr);
+	msg->data = its_get_event_id(d);
 
 	iommu_dma_compose_msi_msg(irq_data_get_msi_desc(d), msg);
 }
 
 static int its_irq_set_irqchip_state(struct irq_data *d,
-				     enum irqchip_irq_state which,
-				     bool state)
+				     enum irqchip_irq_state which, bool state)
 {
 	struct its_device *its_dev = irq_data_get_irq_chip_data(d);
 	u32 event = its_get_event_id(d);
@@ -1809,7 +1811,8 @@ static void its_map_vm(struct its_node *its, struct its_vm *vm)
 			vpe->col_idx = cpumask_first(cpu_online_mask);
 			its_send_vmapp(its, vpe, true);
 			its_send_vinvall(its, vpe);
-			irq_data_update_effective_affinity(d, cpumask_of(vpe->col_idx));
+			irq_data_update_effective_affinity(
+				d, cpumask_of(vpe->col_idx));
 		}
 	}
 
@@ -1940,9 +1943,9 @@ static int its_vlpi_unmap(struct irq_data *d)
 	/* and restore the physical one */
 	irqd_clr_forwarded_to_vcpu(d);
 	its_send_mapti(its_dev, d->hwirq, event);
-	lpi_update_config(d, 0xff, (LPI_PROP_DEFAULT_PRIO |
-				    LPI_PROP_ENABLED |
-				    LPI_PROP_GROUP1));
+	lpi_update_config(d, 0xff,
+			  (LPI_PROP_DEFAULT_PRIO | LPI_PROP_ENABLED |
+			   LPI_PROP_GROUP1));
 
 	/* Potentially unmap the VM from this ITS */
 	its_unmap_vm(its_dev->its, its_dev->event_map.vm);
@@ -2007,17 +2010,16 @@ static int its_irq_set_vcpu_affinity(struct irq_data *d, void *vcpu_info)
 }
 
 static struct irq_chip its_irq_chip = {
-	.name			= "ITS",
-	.irq_mask		= its_mask_irq,
-	.irq_unmask		= its_unmask_irq,
-	.irq_eoi		= irq_chip_eoi_parent,
-	.irq_set_affinity	= its_set_affinity,
-	.irq_compose_msi_msg	= its_irq_compose_msi_msg,
-	.irq_set_irqchip_state	= its_irq_set_irqchip_state,
-	.irq_retrigger		= its_irq_retrigger,
-	.irq_set_vcpu_affinity	= its_irq_set_vcpu_affinity,
+	.name = "ITS",
+	.irq_mask = its_mask_irq,
+	.irq_unmask = its_unmask_irq,
+	.irq_eoi = irq_chip_eoi_parent,
+	.irq_set_affinity = its_set_affinity,
+	.irq_compose_msi_msg = its_irq_compose_msi_msg,
+	.irq_set_irqchip_state = its_irq_set_irqchip_state,
+	.irq_retrigger = its_irq_retrigger,
+	.irq_set_vcpu_affinity = its_irq_set_vcpu_affinity,
 };
-
 
 /*
  * How we allocate LPIs:
@@ -2034,15 +2036,15 @@ static struct irq_chip its_irq_chip = {
  * The consequence of the above is that allocation is cost is low, but
  * freeing is expensive. We assumes that freeing rarely occurs.
  */
-#define ITS_MAX_LPI_NRBITS	16 /* 64K LPIs */
+#define ITS_MAX_LPI_NRBITS 16 /* 64K LPIs */
 
 static DEFINE_MUTEX(lpi_range_lock);
 static LIST_HEAD(lpi_range_list);
 
 struct lpi_range {
-	struct list_head	entry;
-	u32			base_id;
-	u32			span;
+	struct list_head entry;
+	u32 base_id;
+	u32 span;
 };
 
 static struct lpi_range *mk_lpi_range(u32 base, u32 span)
@@ -2205,8 +2207,10 @@ static void gic_reset_prop_table(void *va)
 static struct page *its_allocate_prop_table(gfp_t gfp_flags)
 {
 	struct page *prop_page;
-	
-	if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+
+	if (of_machine_is_compatible("rockchip,rk3568") ||
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		gfp_flags |= GFP_DMA32;
 
 	prop_page = alloc_pages(gfp_flags, get_order(LPI_PROPBASE_SZ));
@@ -2245,8 +2249,8 @@ static bool gic_check_reserved_range(phys_addr_t addr, unsigned long size)
 	}
 
 	/* Not found, not a good sign... */
-	pr_warn("GICv3: Expected reserved range [%pa:%pa], not found\n",
-		&addr, &addr_end);
+	pr_warn("GICv3: Expected reserved range [%pa:%pa], not found\n", &addr,
+		&addr_end);
 	add_taint(TAINT_CRAP, LOCKDEP_STILL_OK);
 	return false;
 }
@@ -2264,7 +2268,8 @@ static int __init its_setup_lpi_prop_table(void)
 	if (gic_rdists->flags & RDIST_FLAGS_RD_TABLES_PREALLOCATED) {
 		u64 val;
 
-		val = gicr_read_propbaser(gic_data_rdist_rd_base() + GICR_PROPBASER);
+		val = gicr_read_propbaser(gic_data_rdist_rd_base() +
+					  GICR_PROPBASER);
 		lpi_id_bits = (val & GICR_PROPBASER_IDBITS_MASK) + 1;
 
 		gic_rdists->prop_table_pa = val & GENMASK_ULL(51, 12);
@@ -2297,13 +2302,13 @@ static int __init its_setup_lpi_prop_table(void)
 }
 
 static const char *its_base_type_string[] = {
-	[GITS_BASER_TYPE_DEVICE]	= "Devices",
-	[GITS_BASER_TYPE_VCPU]		= "Virtual CPUs",
-	[GITS_BASER_TYPE_RESERVED3]	= "Reserved (3)",
-	[GITS_BASER_TYPE_COLLECTION]	= "Interrupt Collections",
-	[GITS_BASER_TYPE_RESERVED5] 	= "Reserved (5)",
-	[GITS_BASER_TYPE_RESERVED6] 	= "Reserved (6)",
-	[GITS_BASER_TYPE_RESERVED7] 	= "Reserved (7)",
+	[GITS_BASER_TYPE_DEVICE] = "Devices",
+	[GITS_BASER_TYPE_VCPU] = "Virtual CPUs",
+	[GITS_BASER_TYPE_RESERVED3] = "Reserved (3)",
+	[GITS_BASER_TYPE_COLLECTION] = "Interrupt Collections",
+	[GITS_BASER_TYPE_RESERVED5] = "Reserved (5)",
+	[GITS_BASER_TYPE_RESERVED6] = "Reserved (6)",
+	[GITS_BASER_TYPE_RESERVED7] = "Reserved (7)",
 };
 
 static u64 its_read_baser(struct its_node *its, struct its_baser *baser)
@@ -2345,9 +2350,11 @@ static int its_setup_baser(struct its_node *its, struct its_baser *baser,
 	}
 
 	gfp_flags = GFP_KERNEL | __GFP_ZERO;
-	if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+	if (of_machine_is_compatible("rockchip,rk3568") ||
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		gfp_flags |= GFP_DMA32;
-	
+
 	page = alloc_pages_node(its->numa_node, gfp_flags, order);
 	if (!page)
 		return -ENOMEM;
@@ -2357,7 +2364,6 @@ static int its_setup_baser(struct its_node *its, struct its_baser *baser,
 
 	/* Check if the physical address of the memory is above 48bits */
 	if (IS_ENABLED(CONFIG_ARM64_64K_PAGES) && (baser_phys >> 48)) {
-
 		/* 52bit PA is supported only when PageSize=64K */
 		if (psz != SZ_64K) {
 			pr_err("ITS: no 52bit PA support when psz=%d\n", psz);
@@ -2370,15 +2376,12 @@ static int its_setup_baser(struct its_node *its, struct its_baser *baser,
 	}
 
 retry_baser:
-	val = (baser_phys					 |
-		(type << GITS_BASER_TYPE_SHIFT)			 |
-		((esz - 1) << GITS_BASER_ENTRY_SIZE_SHIFT)	 |
-		((alloc_pages - 1) << GITS_BASER_PAGES_SHIFT)	 |
-		cache						 |
-		shr						 |
-		GITS_BASER_VALID);
+	val = (baser_phys | (type << GITS_BASER_TYPE_SHIFT) |
+	       ((esz - 1) << GITS_BASER_ENTRY_SIZE_SHIFT) |
+	       ((alloc_pages - 1) << GITS_BASER_PAGES_SHIFT) | cache | shr |
+	       GITS_BASER_VALID);
 
-	val |=	indirect ? GITS_BASER_INDIRECT : 0x0;
+	val |= indirect ? GITS_BASER_INDIRECT : 0x0;
 
 	switch (psz) {
 	case SZ_4K:
@@ -2399,12 +2402,13 @@ retry_baser:
 		tmp &= ~GITS_BASER_SHAREABILITY_MASK;
 
 	if (of_machine_is_compatible("rockchip,rk3568") ||
-	     of_machine_is_compatible("rockchip,rk3566") ||
-	     of_machine_is_compatible("rockchip,rk3588")) {
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588")) {
 		if (tmp & GITS_BASER_SHAREABILITY_MASK)
 			tmp &= ~GITS_BASER_SHAREABILITY_MASK;
 		else
-			gic_flush_dcache_to_poc(base, PAGE_ORDER_TO_SIZE(order));
+			gic_flush_dcache_to_poc(base,
+						PAGE_ORDER_TO_SIZE(order));
 	}
 
 	if ((val ^ tmp) & GITS_BASER_SHAREABILITY_MASK) {
@@ -2418,15 +2422,15 @@ retry_baser:
 		shr = tmp & GITS_BASER_SHAREABILITY_MASK;
 		if (!shr) {
 			cache = GITS_BASER_nC;
-			gic_flush_dcache_to_poc(base, PAGE_ORDER_TO_SIZE(order));
+			gic_flush_dcache_to_poc(base,
+						PAGE_ORDER_TO_SIZE(order));
 		}
 		goto retry_baser;
 	}
 
 	if (val != tmp) {
 		pr_err("ITS@%pa: %s doesn't stick: %llx %llx\n",
-		       &its->phys_base, its_base_type_string[type],
-		       val, tmp);
+		       &its->phys_base, its_base_type_string[type], val, tmp);
 		free_pages((unsigned long)base, order);
 		return -ENXIO;
 	}
@@ -2438,17 +2442,16 @@ retry_baser:
 
 	pr_info("ITS@%pa: allocated %d %s @%lx (%s, esz %d, psz %dK, shr %d)\n",
 		&its->phys_base, (int)(PAGE_ORDER_TO_SIZE(order) / (int)tmp),
-		its_base_type_string[type],
-		(unsigned long)virt_to_phys(base),
-		indirect ? "indirect" : "flat", (int)esz,
-		psz / SZ_1K, (int)shr >> GITS_BASER_SHAREABILITY_SHIFT);
+		its_base_type_string[type], (unsigned long)virt_to_phys(base),
+		indirect ? "indirect" : "flat", (int)esz, psz / SZ_1K,
+		(int)shr >> GITS_BASER_SHAREABILITY_SHIFT);
 
 	return 0;
 }
 
 static bool its_parse_indirect_baser(struct its_node *its,
-				     struct its_baser *baser,
-				     u32 *order, u32 ids)
+				     struct its_baser *baser, u32 *order,
+				     u32 ids)
 {
 	u64 tmp = its_read_baser(its, baser);
 	u64 type = GITS_BASER_TYPE(tmp);
@@ -2522,7 +2525,7 @@ static u32 compute_its_aff(struct its_node *its)
 	 * our own affinity.
 	 */
 	svpet = FIELD_GET(GITS_TYPER_SVPET, its->typer);
-	val  = FIELD_PREP(GICR_TYPER_COMMON_LPI_AFF, svpet);
+	val = FIELD_PREP(GICR_TYPER_COMMON_LPI_AFF, svpet);
 	val |= FIELD_PREP(GICR_TYPER_AFFINITY, its->mpidr);
 	return compute_common_aff(val);
 }
@@ -2714,7 +2717,7 @@ static u64 inherit_vpe_l1_table_from_its(void)
 		/* We have a winner! */
 		gic_data_rdist()->vpe_l1_base = its->tables[2].base;
 
-		val  = GICR_VPROPBASER_4_1_VALID;
+		val = GICR_VPROPBASER_4_1_VALID;
 		if (baser & GITS_BASER_INDIRECT)
 			val |= GICR_VPROPBASER_4_1_INDIRECT;
 		val |= FIELD_PREP(GICR_VPROPBASER_4_1_PAGE_SIZE,
@@ -2729,10 +2732,13 @@ static u64 inherit_vpe_l1_table_from_its(void)
 		}
 		val |= FIELD_PREP(GICR_VPROPBASER_4_1_ADDR, addr >> 12);
 		val |= FIELD_PREP(GICR_VPROPBASER_SHAREABILITY_MASK,
-				  FIELD_GET(GITS_BASER_SHAREABILITY_MASK, baser));
+				  FIELD_GET(GITS_BASER_SHAREABILITY_MASK,
+					    baser));
 		val |= FIELD_PREP(GICR_VPROPBASER_INNER_CACHEABILITY_MASK,
-				  FIELD_GET(GITS_BASER_INNER_CACHEABILITY_MASK, baser));
-		val |= FIELD_PREP(GICR_VPROPBASER_4_1_SIZE, GITS_BASER_NR_PAGES(baser) - 1);
+				  FIELD_GET(GITS_BASER_INNER_CACHEABILITY_MASK,
+					    baser));
+		val |= FIELD_PREP(GICR_VPROPBASER_4_1_SIZE,
+				  GITS_BASER_NR_PAGES(baser) - 1);
 
 		return val;
 	}
@@ -2768,7 +2774,8 @@ static u64 inherit_vpe_l1_table_from_rd(cpumask_t **mask)
 		val = gicr_read_vpropbaser(base + SZ_128K + GICR_VPROPBASER);
 		val &= ~GICR_VPROPBASER_4_1_Z;
 
-		gic_data_rdist()->vpe_l1_base = gic_data_rdist_cpu(cpu)->vpe_l1_base;
+		gic_data_rdist()->vpe_l1_base =
+			gic_data_rdist_cpu(cpu)->vpe_l1_base;
 		*mask = gic_data_rdist_cpu(cpu)->vpe_table_mask;
 
 		return val;
@@ -2792,11 +2799,11 @@ static bool allocate_vpe_l2_table(int cpu, u32 id)
 	if (!base)
 		return true;
 
-	val  = gicr_read_vpropbaser(base + SZ_128K + GICR_VPROPBASER);
+	val = gicr_read_vpropbaser(base + SZ_128K + GICR_VPROPBASER);
 
-	esz  = FIELD_GET(GICR_VPROPBASER_4_1_ENTRY_SIZE, val) + 1;
+	esz = FIELD_GET(GICR_VPROPBASER_4_1_ENTRY_SIZE, val) + 1;
 	gpsz = FIELD_GET(GICR_VPROPBASER_4_1_PAGE_SIZE, val);
-	npg  = FIELD_GET(GICR_VPROPBASER_4_1_SIZE, val) + 1;
+	npg = FIELD_GET(GICR_VPROPBASER_4_1_SIZE, val) + 1;
 
 	switch (gpsz) {
 	default:
@@ -2838,7 +2845,8 @@ static bool allocate_vpe_l2_table(int cpu, u32 id)
 
 		/* Flush Lvl1 entry to PoC if hw doesn't support coherency */
 		if (!(val & GICR_VPROPBASER_SHAREABILITY_MASK))
-			gic_flush_dcache_to_poc(table + idx, GITS_LVL1_ENTRY_SIZE);
+			gic_flush_dcache_to_poc(table + idx,
+						GITS_LVL1_ENTRY_SIZE);
 
 		/* Ensure updated table contents are visible to RD hardware */
 		dsb(sy);
@@ -2864,7 +2872,8 @@ static int allocate_vpe_l1_table(void)
 	 * effect of making sure no doorbell will be generated and we can
 	 * then safely clear VPROPBASER.Valid.
 	 */
-	if (gicr_read_vpendbaser(vlpi_base + GICR_VPENDBASER) & GICR_VPENDBASER_Valid)
+	if (gicr_read_vpendbaser(vlpi_base + GICR_VPENDBASER) &
+	    GICR_VPENDBASER_Valid)
 		gicr_write_vpendbaser(GICR_VPENDBASER_PendingLast,
 				      vlpi_base + GICR_VPENDBASER);
 
@@ -2878,7 +2887,8 @@ static int allocate_vpe_l1_table(void)
 	if (val & GICR_VPROPBASER_4_1_VALID)
 		goto out;
 
-	gic_data_rdist()->vpe_table_mask = kzalloc(sizeof(cpumask_t), GFP_ATOMIC);
+	gic_data_rdist()->vpe_table_mask =
+		kzalloc(sizeof(cpumask_t), GFP_ATOMIC);
 	if (!gic_data_rdist()->vpe_table_mask)
 		return -ENOMEM;
 
@@ -2943,8 +2953,8 @@ static int allocate_vpe_l1_table(void)
 	/* Right, that's the number of CPU pages we need for L1 */
 	np = DIV_ROUND_UP(npg * psz, PAGE_SIZE);
 
-	pr_debug("np = %d, npg = %lld, psz = %d, epp = %d, esz = %d\n",
-		 np, npg, psz, epp, esz);
+	pr_debug("np = %d, npg = %lld, psz = %d, epp = %d, esz = %d\n", np, npg,
+		 psz, epp, esz);
 	page = alloc_pages(GFP_ATOMIC | __GFP_ZERO, get_order(np * PAGE_SIZE));
 	if (!page)
 		return -ENOMEM;
@@ -2963,8 +2973,7 @@ out:
 	gicr_write_vpropbaser(val, vlpi_base + GICR_VPROPBASER);
 	cpumask_set_cpu(smp_processor_id(), gic_data_rdist()->vpe_table_mask);
 
-	pr_debug("CPU%d: VPROPBASER = %llx %*pbl\n",
-		 smp_processor_id(), val,
+	pr_debug("CPU%d: VPROPBASER = %llx %*pbl\n", smp_processor_id(), val,
 		 cpumask_pr_args(gic_data_rdist()->vpe_table_mask));
 
 	return 0;
@@ -2974,8 +2983,8 @@ static int its_alloc_collections(struct its_node *its)
 {
 	int i;
 
-	its->collections = kcalloc(nr_cpu_ids, sizeof(*its->collections),
-				   GFP_KERNEL);
+	its->collections =
+		kcalloc(nr_cpu_ids, sizeof(*its->collections), GFP_KERNEL);
 	if (!its->collections)
 		return -ENOMEM;
 
@@ -2988,11 +2997,13 @@ static int its_alloc_collections(struct its_node *its)
 static struct page *its_allocate_pending_table(gfp_t gfp_flags)
 {
 	struct page *pend_page;
-	
-	if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+
+	if (of_machine_is_compatible("rockchip,rk3568") ||
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		gfp_flags |= GFP_DMA32;
-	pend_page = alloc_pages(gfp_flags | __GFP_ZERO,
-				get_order(LPI_PENDBASE_SZ));
+	pend_page =
+		alloc_pages(gfp_flags | __GFP_ZERO, get_order(LPI_PENDBASE_SZ));
 	if (!pend_page)
 		return NULL;
 
@@ -3065,7 +3076,7 @@ static int __init allocate_lpi_tables(void)
 
 static u64 read_vpend_dirty_clear(void __iomem *vlpi_base)
 {
-	u32 count = 1000000;	/* 1s! */
+	u32 count = 1000000; /* 1s! */
 	bool clean;
 	u64 val;
 
@@ -3138,8 +3149,7 @@ static void its_cpu_init_lpis(void)
 	paddr = page_to_phys(pend_page);
 
 	/* set PROPBASE */
-	val = (gic_rdists->prop_table_pa |
-	       GICR_PROPBASER_InnerShareable |
+	val = (gic_rdists->prop_table_pa | GICR_PROPBASER_InnerShareable |
 	       GICR_PROPBASER_RaWaWb |
 	       ((LPI_NRBITS - 1) & GICR_PROPBASER_IDBITS_MASK));
 
@@ -3150,8 +3160,8 @@ static void its_cpu_init_lpis(void)
 		tmp &= ~GICR_PROPBASER_SHAREABILITY_MASK;
 
 	if (of_machine_is_compatible("rockchip,rk3568") ||
-	     of_machine_is_compatible("rockchip,rk3566") ||
-	     of_machine_is_compatible("rockchip,rk3588"))
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		tmp &= ~GICR_PROPBASER_SHAREABILITY_MASK;
 
 	if ((tmp ^ val) & GICR_PROPBASER_SHAREABILITY_MASK) {
@@ -3166,13 +3176,13 @@ static void its_cpu_init_lpis(void)
 			val |= GICR_PROPBASER_nC;
 			gicr_write_propbaser(val, rbase + GICR_PROPBASER);
 		}
-		pr_info_once("GIC: using cache flushing for LPI property table\n");
+		pr_info_once(
+			"GIC: using cache flushing for LPI property table\n");
 		gic_rdists->flags |= RDIST_FLAGS_PROPBASE_NEEDS_FLUSHING;
 	}
 
 	/* set PENDBASE */
-	val = (page_to_phys(pend_page) |
-	       GICR_PENDBASER_InnerShareable |
+	val = (page_to_phys(pend_page) | GICR_PENDBASER_InnerShareable |
 	       GICR_PENDBASER_RaWaWb);
 
 	gicr_write_pendbaser(val, rbase + GICR_PENDBASER);
@@ -3182,8 +3192,8 @@ static void its_cpu_init_lpis(void)
 		tmp &= ~GICR_PENDBASER_SHAREABILITY_MASK;
 
 	if (of_machine_is_compatible("rockchip,rk3568") ||
-	     of_machine_is_compatible("rockchip,rk3566") ||
-	     of_machine_is_compatible("rockchip,rk3588"))
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		tmp &= ~GICR_PENDBASER_SHAREABILITY_MASK;
 
 	if (!(tmp & GICR_PENDBASER_SHAREABILITY_MASK)) {
@@ -3213,7 +3223,8 @@ static void its_cpu_init_lpis(void)
 		 * So we initialize IDbits to known value to avoid VLPI drop.
 		 */
 		val = (LPI_NRBITS - 1) & GICR_VPROPBASER_IDBITS_MASK;
-		pr_debug("GICv4: CPU%d: Init IDbits to 0x%llx for GICR_VPROPBASER\n",
+		pr_debug(
+			"GICv4: CPU%d: Init IDbits to 0x%llx for GICR_VPROPBASER\n",
 			smp_processor_id(), val);
 		gicr_write_vpropbaser(val, vlpi_base + GICR_VPROPBASER);
 
@@ -3242,7 +3253,8 @@ out:
 	pr_info("GICv3: CPU%d: using %s LPI pending table @%pa\n",
 		smp_processor_id(),
 		gic_data_rdist()->flags & RD_LOCAL_PENDTABLE_PREALLOCATED ?
-		"reserved" : "allocated",
+			"reserved" :
+			"allocated",
 		&paddr);
 }
 
@@ -3257,7 +3269,7 @@ static void its_cpu_init_collection(struct its_node *its)
 
 		cpu_node = of_get_cpu_node(cpu, NULL);
 		if (its->numa_node != NUMA_NO_NODE &&
-			its->numa_node != of_node_to_nid(cpu_node))
+		    its->numa_node != of_node_to_nid(cpu_node))
 			return;
 	}
 
@@ -3328,8 +3340,8 @@ static struct its_baser *its_get_baser(struct its_node *its, u32 type)
 	return NULL;
 }
 
-static bool its_alloc_table_entry(struct its_node *its,
-				  struct its_baser *baser, u32 id)
+static bool its_alloc_table_entry(struct its_node *its, struct its_baser *baser,
+				  u32 id)
 {
 	struct page *page;
 	u32 esz, idx;
@@ -3351,7 +3363,9 @@ static bool its_alloc_table_entry(struct its_node *its,
 	if (!table[idx]) {
 		gfp_t gfp_flags = GFP_KERNEL | __GFP_ZERO;
 
-		if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+		if (of_machine_is_compatible("rockchip,rk3568") ||
+		    of_machine_is_compatible("rockchip,rk3566") ||
+		    of_machine_is_compatible("rockchip,rk3588"))
 			gfp_flags |= GFP_DMA32;
 		page = alloc_pages_node(its->numa_node, gfp_flags,
 					get_order(baser->psz));
@@ -3366,7 +3380,8 @@ static bool its_alloc_table_entry(struct its_node *its,
 
 		/* Flush Lvl1 entry to PoC if hw doesn't support coherency */
 		if (!(baser->val & GITS_BASER_SHAREABILITY_MASK))
-			gic_flush_dcache_to_poc(table + idx, GITS_LVL1_ENTRY_SIZE);
+			gic_flush_dcache_to_poc(table + idx,
+						GITS_LVL1_ENTRY_SIZE);
 
 		/* Ensure updated table contents are visible to ITS hardware */
 		dsb(sy);
@@ -3459,8 +3474,10 @@ static struct its_device *its_create_device(struct its_node *its, u32 dev_id,
 	sz = nr_ites * (FIELD_GET(GITS_TYPER_ITT_ENTRY_SIZE, its->typer) + 1);
 	sz = max(sz, ITS_ITT_ALIGN) + ITS_ITT_ALIGN - 1;
 	gfp_flags = GFP_KERNEL;
-	
-	if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588")) {
+
+	if (of_machine_is_compatible("rockchip,rk3568") ||
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588")) {
 		gfp_flags |= GFP_DMA32;
 		itt = (void *)__get_free_pages(gfp_flags, get_order(sz));
 	} else {
@@ -3470,19 +3487,20 @@ static struct its_device *its_create_device(struct its_node *its, u32 dev_id,
 	if (alloc_lpis) {
 		lpi_map = its_lpi_alloc(nvecs, &lpi_base, &nr_lpis);
 		if (lpi_map)
-			col_map = kcalloc(nr_lpis, sizeof(*col_map),
-					  GFP_KERNEL);
+			col_map =
+				kcalloc(nr_lpis, sizeof(*col_map), GFP_KERNEL);
 	} else {
 		col_map = kcalloc(nr_ites, sizeof(*col_map), GFP_KERNEL);
 		nr_lpis = 0;
 		lpi_base = 0;
 	}
 
-	if (!dev || !itt ||  !col_map || (!lpi_map && alloc_lpis)) {
+	if (!dev || !itt || !col_map || (!lpi_map && alloc_lpis)) {
 		kfree(dev);
 
 		if (of_machine_is_compatible("rockchip,rk3568") ||
-		    of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+		    of_machine_is_compatible("rockchip,rk3566") ||
+		    of_machine_is_compatible("rockchip,rk3588"))
 			free_pages((unsigned long)itt, get_order(sz));
 		else
 			kfree(itt);
@@ -3524,17 +3542,20 @@ static void its_free_device(struct its_device *its_dev)
 	list_del(&its_dev->entry);
 	raw_spin_unlock_irqrestore(&its_dev->its->lock, flags);
 	kfree(its_dev->event_map.col_map);
-	
+
 	if (of_machine_is_compatible("rockchip,rk3568") ||
-	    of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
-		free_pages((unsigned long)its_dev->itt, get_order(its_dev->itt_sz));
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
+		free_pages((unsigned long)its_dev->itt,
+			   get_order(its_dev->itt_sz));
 	else
 		kfree(its_dev->itt);
-	
+
 	kfree(its_dev);
 }
 
-static int its_alloc_device_irq(struct its_device *dev, int nvecs, irq_hw_number_t *hwirq)
+static int its_alloc_device_irq(struct its_device *dev, int nvecs,
+				irq_hw_number_t *hwirq)
 {
 	int idx;
 
@@ -3570,10 +3591,8 @@ static int its_msi_prepare(struct irq_domain *domain, struct device *dev,
 	msi_info = msi_get_domain_info(domain);
 	its = msi_info->data;
 
-	if (!gic_rdists->has_direct_lpi &&
-	    vpe_proxy.dev &&
-	    vpe_proxy.dev->its == its &&
-	    dev_id == vpe_proxy.dev->device_id) {
+	if (!gic_rdists->has_direct_lpi && vpe_proxy.dev &&
+	    vpe_proxy.dev->its == its && dev_id == vpe_proxy.dev->device_id) {
 		/* Bad luck. Get yourself a better implementation */
 		WARN_ONCE(1, "DevId %x clashes with GICv4 VPE proxy device\n",
 			  dev_id);
@@ -3610,12 +3629,11 @@ out:
 }
 
 static struct msi_domain_ops its_msi_domain_ops = {
-	.msi_prepare	= its_msi_prepare,
+	.msi_prepare = its_msi_prepare,
 };
 
 static int its_irq_gic_domain_alloc(struct irq_domain *domain,
-				    unsigned int virq,
-				    irq_hw_number_t hwirq)
+				    unsigned int virq, irq_hw_number_t hwirq)
 {
 	struct irq_fwspec fwspec;
 
@@ -3661,8 +3679,8 @@ static int its_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
 		if (err)
 			return err;
 
-		irq_domain_set_hwirq_and_chip(domain, virq + i,
-					      hwirq + i, &its_irq_chip, its_dev);
+		irq_domain_set_hwirq_and_chip(domain, virq + i, hwirq + i,
+					      &its_irq_chip, its_dev);
 		irqd = irq_get_irq_data(virq + i);
 		irqd_set_single_target(irqd);
 		irqd_set_affinity_on_activate(irqd);
@@ -3714,13 +3732,14 @@ static void its_irq_domain_free(struct irq_domain *domain, unsigned int virq,
 	struct its_node *its = its_dev->its;
 	int i;
 
-	bitmap_release_region(its_dev->event_map.lpi_map,
-			      its_get_event_id(irq_domain_get_irq_data(domain, virq)),
-			      get_count_order(nr_irqs));
+	bitmap_release_region(
+		its_dev->event_map.lpi_map,
+		its_get_event_id(irq_domain_get_irq_data(domain, virq)),
+		get_count_order(nr_irqs));
 
 	for (i = 0; i < nr_irqs; i++) {
-		struct irq_data *data = irq_domain_get_irq_data(domain,
-								virq + i);
+		struct irq_data *data =
+			irq_domain_get_irq_data(domain, virq + i);
 		/* Nuke the entry in the domain */
 		irq_domain_reset_irq_data(data);
 	}
@@ -3731,9 +3750,8 @@ static void its_irq_domain_free(struct irq_domain *domain, unsigned int virq,
 	 * If all interrupts have been freed, start mopping the
 	 * floor. This is conditioned on the device not being shared.
 	 */
-	if (!its_dev->shared &&
-	    bitmap_empty(its_dev->event_map.lpi_map,
-			 its_dev->event_map.nr_lpis)) {
+	if (!its_dev->shared && bitmap_empty(its_dev->event_map.lpi_map,
+					     its_dev->event_map.nr_lpis)) {
 		its_lpi_free(its_dev->event_map.lpi_map,
 			     its_dev->event_map.lpi_base,
 			     its_dev->event_map.nr_lpis);
@@ -3749,10 +3767,10 @@ static void its_irq_domain_free(struct irq_domain *domain, unsigned int virq,
 }
 
 static const struct irq_domain_ops its_domain_ops = {
-	.alloc			= its_irq_domain_alloc,
-	.free			= its_irq_domain_free,
-	.activate		= its_irq_domain_activate,
-	.deactivate		= its_irq_domain_deactivate,
+	.alloc = its_irq_domain_alloc,
+	.free = its_irq_domain_free,
+	.activate = its_irq_domain_activate,
+	.deactivate = its_irq_domain_deactivate,
 };
 
 /*
@@ -3827,12 +3845,14 @@ static void its_vpe_db_proxy_map_locked(struct its_vpe *vpe)
 
 	/* This slot was already allocated. Kick the other VPE out. */
 	if (vpe_proxy.vpes[vpe_proxy.next_victim])
-		its_vpe_db_proxy_unmap_locked(vpe_proxy.vpes[vpe_proxy.next_victim]);
+		its_vpe_db_proxy_unmap_locked(
+			vpe_proxy.vpes[vpe_proxy.next_victim]);
 
 	/* Map the new VPE instead */
 	vpe_proxy.vpes[vpe_proxy.next_victim] = vpe;
 	vpe->vpe_proxy_event = vpe_proxy.next_victim;
-	vpe_proxy.next_victim = (vpe_proxy.next_victim + 1) % vpe_proxy.dev->nr_ites;
+	vpe_proxy.next_victim =
+		(vpe_proxy.next_victim + 1) % vpe_proxy.dev->nr_ites;
 
 	vpe_proxy.dev->event_map.col_map[vpe->vpe_proxy_event] = vpe->col_idx;
 	its_send_mapti(vpe_proxy.dev, vpe->vpe_db_lpi, vpe->vpe_proxy_event);
@@ -3869,8 +3889,7 @@ static void its_vpe_db_proxy_move(struct its_vpe *vpe, int from, int to)
 }
 
 static int its_vpe_set_affinity(struct irq_data *d,
-				const struct cpumask *mask_val,
-				bool force)
+				const struct cpumask *mask_val, bool force)
 {
 	struct its_vpe *vpe = irq_data_get_irq_chip_data(d);
 	int from, cpu = cpumask_first(mask_val);
@@ -3921,10 +3940,9 @@ static void its_wait_vpt_parse_complete(void)
 	if (!gic_rdists->has_vpend_valid_dirty)
 		return;
 
-	WARN_ON_ONCE(readq_relaxed_poll_timeout_atomic(vlpi_base + GICR_VPENDBASER,
-						       val,
-						       !(val & GICR_VPENDBASER_Dirty),
-						       1, 500));
+	WARN_ON_ONCE(readq_relaxed_poll_timeout_atomic(
+		vlpi_base + GICR_VPENDBASER, val,
+		!(val & GICR_VPENDBASER_Dirty), 1, 500));
 }
 
 static void its_vpe_schedule(struct its_vpe *vpe)
@@ -3933,15 +3951,14 @@ static void its_vpe_schedule(struct its_vpe *vpe)
 	u64 val;
 
 	/* Schedule the VPE */
-	val  = virt_to_phys(page_address(vpe->its_vm->vprop_page)) &
-		GENMASK_ULL(51, 12);
+	val = virt_to_phys(page_address(vpe->its_vm->vprop_page)) &
+	      GENMASK_ULL(51, 12);
 	val |= (LPI_NRBITS - 1) & GICR_VPROPBASER_IDBITS_MASK;
 	val |= GICR_VPROPBASER_RaWb;
 	val |= GICR_VPROPBASER_InnerShareable;
 	gicr_write_vpropbaser(val, vlpi_base + GICR_VPROPBASER);
 
-	val  = virt_to_phys(page_address(vpe->vpt_page)) &
-		GENMASK_ULL(51, 16);
+	val = virt_to_phys(page_address(vpe->vpt_page)) & GENMASK_ULL(51, 16);
 	val |= GICR_VPENDBASER_RaWaWb;
 	val |= GICR_VPENDBASER_InnerShareable;
 	/*
@@ -4060,8 +4077,7 @@ static void its_vpe_unmask_irq(struct irq_data *d)
 }
 
 static int its_vpe_set_irqchip_state(struct irq_data *d,
-				     enum irqchip_irq_state which,
-				     bool state)
+				     enum irqchip_irq_state which, bool state)
 {
 	struct its_vpe *vpe = irq_data_get_irq_chip_data(d);
 
@@ -4094,14 +4110,14 @@ static int its_vpe_retrigger(struct irq_data *d)
 }
 
 static struct irq_chip its_vpe_irq_chip = {
-	.name			= "GICv4-vpe",
-	.irq_mask		= its_vpe_mask_irq,
-	.irq_unmask		= its_vpe_unmask_irq,
-	.irq_eoi		= irq_chip_eoi_parent,
-	.irq_set_affinity	= its_vpe_set_affinity,
-	.irq_retrigger		= its_vpe_retrigger,
-	.irq_set_irqchip_state	= its_vpe_set_irqchip_state,
-	.irq_set_vcpu_affinity	= its_vpe_set_vcpu_affinity,
+	.name = "GICv4-vpe",
+	.irq_mask = its_vpe_mask_irq,
+	.irq_unmask = its_vpe_unmask_irq,
+	.irq_eoi = irq_chip_eoi_parent,
+	.irq_set_affinity = its_vpe_set_affinity,
+	.irq_retrigger = its_vpe_retrigger,
+	.irq_set_irqchip_state = its_vpe_set_irqchip_state,
+	.irq_set_vcpu_affinity = its_vpe_set_vcpu_affinity,
 };
 
 static struct its_node *find_4_1_its(void)
@@ -4148,8 +4164,7 @@ static void its_vpe_4_1_unmask_irq(struct irq_data *d)
 	its_vpe_4_1_send_inv(d);
 }
 
-static void its_vpe_4_1_schedule(struct its_vpe *vpe,
-				 struct its_cmd_info *info)
+static void its_vpe_4_1_schedule(struct its_vpe *vpe, struct its_cmd_info *info)
 {
 	void __iomem *vlpi_base = gic_data_rdist_vlpi_base();
 	u64 val = 0;
@@ -4193,8 +4208,7 @@ static void its_vpe_4_1_deschedule(struct its_vpe *vpe,
 		 * We're not blocking, so just make the vPE non-resident
 		 * with PendingLast set, indicating that we'll be back.
 		 */
-		val = its_clear_vpend_valid(vlpi_base,
-					    0,
+		val = its_clear_vpend_valid(vlpi_base, 0,
 					    GICR_VPENDBASER_PendingLast);
 		vpe->pending_last = true;
 	}
@@ -4207,7 +4221,7 @@ static void its_vpe_4_1_invall(struct its_vpe *vpe)
 	u64 val;
 	int cpu;
 
-	val  = GICR_INVALLR_V;
+	val = GICR_INVALLR_V;
 	val |= FIELD_PREP(GICR_INVALLR_VPEID, vpe->vpe_id);
 
 	/* Target the redistributor this vPE is currently known on */
@@ -4249,12 +4263,12 @@ static int its_vpe_4_1_set_vcpu_affinity(struct irq_data *d, void *vcpu_info)
 }
 
 static struct irq_chip its_vpe_4_1_irq_chip = {
-	.name			= "GICv4.1-vpe",
-	.irq_mask		= its_vpe_4_1_mask_irq,
-	.irq_unmask		= its_vpe_4_1_unmask_irq,
-	.irq_eoi		= irq_chip_eoi_parent,
-	.irq_set_affinity	= its_vpe_set_affinity,
-	.irq_set_vcpu_affinity	= its_vpe_4_1_set_vcpu_affinity,
+	.name = "GICv4.1-vpe",
+	.irq_mask = its_vpe_4_1_mask_irq,
+	.irq_unmask = its_vpe_4_1_unmask_irq,
+	.irq_eoi = irq_chip_eoi_parent,
+	.irq_set_affinity = its_vpe_set_affinity,
+	.irq_set_vcpu_affinity = its_vpe_4_1_set_vcpu_affinity,
 };
 
 static void its_configure_sgi(struct irq_data *d, bool clear)
@@ -4294,8 +4308,7 @@ static void its_sgi_unmask_irq(struct irq_data *d)
 }
 
 static int its_sgi_set_affinity(struct irq_data *d,
-				const struct cpumask *mask_val,
-				bool force)
+				const struct cpumask *mask_val, bool force)
 {
 	/*
 	 * There is no notion of affinity for virtual SGIs, at least
@@ -4307,8 +4320,7 @@ static int its_sgi_set_affinity(struct irq_data *d,
 }
 
 static int its_sgi_set_irqchip_state(struct irq_data *d,
-				     enum irqchip_irq_state which,
-				     bool state)
+				     enum irqchip_irq_state which, bool state)
 {
 	if (which != IRQCHIP_STATE_PENDING)
 		return -EINVAL;
@@ -4318,7 +4330,7 @@ static int its_sgi_set_irqchip_state(struct irq_data *d,
 		struct its_node *its = find_4_1_its();
 		u64 val;
 
-		val  = FIELD_PREP(GITS_SGIR_VPEID, vpe->vpe_id);
+		val = FIELD_PREP(GITS_SGIR_VPEID, vpe->vpe_id);
 		val |= FIELD_PREP(GITS_SGIR_VINTID, d->hwirq);
 		writeq_relaxed(val, its->sgir_base + GITS_SGIR - SZ_128K);
 	} else {
@@ -4334,7 +4346,7 @@ static int its_sgi_get_irqchip_state(struct irq_data *d,
 	struct its_vpe *vpe = irq_data_get_irq_chip_data(d);
 	void __iomem *base;
 	unsigned long flags;
-	u32 count = 1000000;	/* 1s! */
+	u32 count = 1000000; /* 1s! */
 	u32 status;
 	int cpu;
 
@@ -4399,13 +4411,13 @@ static int its_sgi_set_vcpu_affinity(struct irq_data *d, void *vcpu_info)
 }
 
 static struct irq_chip its_sgi_irq_chip = {
-	.name			= "GICv4.1-sgi",
-	.irq_mask		= its_sgi_mask_irq,
-	.irq_unmask		= its_sgi_unmask_irq,
-	.irq_set_affinity	= its_sgi_set_affinity,
-	.irq_set_irqchip_state	= its_sgi_set_irqchip_state,
-	.irq_get_irqchip_state	= its_sgi_get_irqchip_state,
-	.irq_set_vcpu_affinity	= its_sgi_set_vcpu_affinity,
+	.name = "GICv4.1-sgi",
+	.irq_mask = its_sgi_mask_irq,
+	.irq_unmask = its_sgi_unmask_irq,
+	.irq_set_affinity = its_sgi_set_affinity,
+	.irq_set_irqchip_state = its_sgi_set_irqchip_state,
+	.irq_get_irqchip_state = its_sgi_get_irqchip_state,
+	.irq_set_vcpu_affinity = its_sgi_set_vcpu_affinity,
 };
 
 static int its_sgi_irq_domain_alloc(struct irq_domain *domain,
@@ -4432,8 +4444,7 @@ static int its_sgi_irq_domain_alloc(struct irq_domain *domain,
 }
 
 static void its_sgi_irq_domain_free(struct irq_domain *domain,
-				    unsigned int virq,
-				    unsigned int nr_irqs)
+				    unsigned int virq, unsigned int nr_irqs)
 {
 	/* Nothing to do */
 }
@@ -4467,10 +4478,10 @@ static void its_sgi_irq_domain_deactivate(struct irq_domain *domain,
 }
 
 static const struct irq_domain_ops its_sgi_domain_ops = {
-	.alloc		= its_sgi_irq_domain_alloc,
-	.free		= its_sgi_irq_domain_free,
-	.activate	= its_sgi_irq_domain_activate,
-	.deactivate	= its_sgi_irq_domain_deactivate,
+	.alloc = its_sgi_irq_domain_alloc,
+	.free = its_sgi_irq_domain_free,
+	.activate = its_sgi_irq_domain_activate,
+	.deactivate = its_sgi_irq_domain_deactivate,
 };
 
 static int its_vpe_id_alloc(void)
@@ -4525,8 +4536,7 @@ static void its_vpe_teardown(struct its_vpe *vpe)
 }
 
 static void its_vpe_irq_domain_free(struct irq_domain *domain,
-				    unsigned int virq,
-				    unsigned int nr_irqs)
+				    unsigned int virq, unsigned int nr_irqs)
 {
 	struct its_vm *vm = domain->host_data;
 	int i;
@@ -4534,8 +4544,8 @@ static void its_vpe_irq_domain_free(struct irq_domain *domain,
 	irq_domain_free_irqs_parent(domain, virq, nr_irqs);
 
 	for (i = 0; i < nr_irqs; i++) {
-		struct irq_data *data = irq_domain_get_irq_data(domain,
-								virq + i);
+		struct irq_data *data =
+			irq_domain_get_irq_data(domain, virq + i);
 		struct its_vpe *vpe = irq_data_get_irq_chip_data(data);
 
 		BUG_ON(vm != vpe->its_vm);
@@ -4551,8 +4561,9 @@ static void its_vpe_irq_domain_free(struct irq_domain *domain,
 	}
 }
 
-static int its_vpe_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
-				    unsigned int nr_irqs, void *args)
+static int its_vpe_irq_domain_alloc(struct irq_domain *domain,
+				    unsigned int virq, unsigned int nr_irqs,
+				    void *args)
 {
 	struct irq_chip *irqchip = &its_vpe_irq_chip;
 	struct its_vm *vm = args;
@@ -4594,8 +4605,8 @@ static int its_vpe_irq_domain_alloc(struct irq_domain *domain, unsigned int virq
 					       vm->vpes[i]->vpe_db_lpi);
 		if (err)
 			break;
-		irq_domain_set_hwirq_and_chip(domain, virq + i, i,
-					      irqchip, vm->vpes[i]);
+		irq_domain_set_hwirq_and_chip(domain, virq + i, i, irqchip,
+					      vm->vpes[i]);
 		set_bit(i, bitmap);
 		irqd_set_resend_when_in_progress(irq_get_irq_data(virq + i));
 	}
@@ -4672,15 +4683,15 @@ static void its_vpe_irq_domain_deactivate(struct irq_domain *domain,
 }
 
 static const struct irq_domain_ops its_vpe_domain_ops = {
-	.alloc			= its_vpe_irq_domain_alloc,
-	.free			= its_vpe_irq_domain_free,
-	.activate		= its_vpe_irq_domain_activate,
-	.deactivate		= its_vpe_irq_domain_deactivate,
+	.alloc = its_vpe_irq_domain_alloc,
+	.free = its_vpe_irq_domain_free,
+	.activate = its_vpe_irq_domain_activate,
+	.deactivate = its_vpe_irq_domain_deactivate,
 };
 
 static int its_force_quiescent(void __iomem *base)
 {
-	u32 count = 1000000;	/* 1s */
+	u32 count = 1000000; /* 1s */
 	u32 val;
 
 	val = readl_relaxed(base + GITS_CTLR);
@@ -4763,11 +4774,9 @@ static bool __maybe_unused its_enable_quirk_socionext_synquacer(void *data)
 	u32 pre_its_window[2];
 	u32 ids;
 
-	if (!fwnode_property_read_u32_array(its->fwnode_handle,
-					   "socionext,synquacer-pre-its",
-					   pre_its_window,
-					   ARRAY_SIZE(pre_its_window))) {
-
+	if (!fwnode_property_read_u32_array(
+		    its->fwnode_handle, "socionext,synquacer-pre-its",
+		    pre_its_window, ARRAY_SIZE(pre_its_window))) {
 		its->pre_its_base = pre_its_window[0];
 		its->get_msi_base = its_irq_get_msi_base_pre_its;
 
@@ -4810,29 +4819,37 @@ static bool __maybe_unused its_enable_rk3588001(void *data)
 	return true;
 }
 
+static bool its_set_non_coherent(void *data)
+{
+	struct its_node *its = data;
+
+	its->flags |= ITS_FLAGS_FORCE_NON_SHAREABLE;
+	return true;
+}
+
 static const struct gic_quirk its_quirks[] = {
 #ifdef CONFIG_CAVIUM_ERRATUM_22375
 	{
-		.desc	= "ITS: Cavium errata 22375, 24313",
-		.iidr	= 0xa100034c,	/* ThunderX pass 1.x */
-		.mask	= 0xffff0fff,
-		.init	= its_enable_quirk_cavium_22375,
+		.desc = "ITS: Cavium errata 22375, 24313",
+		.iidr = 0xa100034c, /* ThunderX pass 1.x */
+		.mask = 0xffff0fff,
+		.init = its_enable_quirk_cavium_22375,
 	},
 #endif
 #ifdef CONFIG_CAVIUM_ERRATUM_23144
 	{
-		.desc	= "ITS: Cavium erratum 23144",
-		.iidr	= 0xa100034c,	/* ThunderX pass 1.x */
-		.mask	= 0xffff0fff,
-		.init	= its_enable_quirk_cavium_23144,
+		.desc = "ITS: Cavium erratum 23144",
+		.iidr = 0xa100034c, /* ThunderX pass 1.x */
+		.mask = 0xffff0fff,
+		.init = its_enable_quirk_cavium_23144,
 	},
 #endif
 #ifdef CONFIG_QCOM_QDF2400_ERRATUM_0065
 	{
-		.desc	= "ITS: QDF2400 erratum 0065",
-		.iidr	= 0x00001070, /* QDF2400 ITS rev 1.x */
-		.mask	= 0xffffffff,
-		.init	= its_enable_quirk_qdf2400_e0065,
+		.desc = "ITS: QDF2400 erratum 0065",
+		.iidr = 0x00001070, /* QDF2400 ITS rev 1.x */
+		.mask = 0xffffffff,
+		.init = its_enable_quirk_qdf2400_e0065,
 	},
 #endif
 #ifdef CONFIG_SOCIONEXT_SYNQUACER_PREITS
@@ -4842,30 +4859,34 @@ static const struct gic_quirk its_quirks[] = {
 		 * implementation, but with a 'pre-ITS' added that requires
 		 * special handling in software.
 		 */
-		.desc	= "ITS: Socionext Synquacer pre-ITS",
-		.iidr	= 0x0001143b,
-		.mask	= 0xffffffff,
-		.init	= its_enable_quirk_socionext_synquacer,
+		.desc = "ITS: Socionext Synquacer pre-ITS",
+		.iidr = 0x0001143b,
+		.mask = 0xffffffff,
+		.init = its_enable_quirk_socionext_synquacer,
 	},
 #endif
 #ifdef CONFIG_HISILICON_ERRATUM_161600802
 	{
-		.desc	= "ITS: Hip07 erratum 161600802",
-		.iidr	= 0x00000004,
-		.mask	= 0xffffffff,
-		.init	= its_enable_quirk_hip07_161600802,
+		.desc = "ITS: Hip07 erratum 161600802",
+		.iidr = 0x00000004,
+		.mask = 0xffffffff,
+		.init = its_enable_quirk_hip07_161600802,
 	},
 #endif
 #ifdef CONFIG_ROCKCHIP_ERRATUM_3588001
 	{
-		.desc   = "ITS: Rockchip erratum RK3588001",
-		.iidr   = 0x0201743b,
-		.mask   = 0xffffffff,
-		.init   = its_enable_rk3588001,
+		.desc = "ITS: Rockchip erratum RK3588001",
+		.iidr = 0x0201743b,
+		.mask = 0xffffffff,
+		.init = its_enable_rk3588001,
 	},
 #endif
 	{
-	}
+		.desc = "ITS: non-coherent attribute",
+		.property = "dma-noncoherent",
+		.init = its_set_non_coherent,
+	},
+	{}
 };
 
 static void its_enable_quirks(struct its_node *its)
@@ -4873,6 +4894,10 @@ static void its_enable_quirks(struct its_node *its)
 	u32 iidr = readl_relaxed(its->base + GITS_IIDR);
 
 	gic_enable_quirks(iidr, its_quirks, its);
+
+	if (is_of_node(its->fwnode_handle))
+		gic_enable_of_quirks(to_of_node(its->fwnode_handle), its_quirks,
+				     its);
 }
 
 static int its_save_disable(void)
@@ -5008,7 +5033,7 @@ out_unmap:
 	return NULL;
 }
 
-static int its_init_domain(struct fwnode_handle *handle, struct its_node *its)
+static int its_init_domain(struct its_node *its)
 {
 	struct irq_domain *inner_domain;
 	struct msi_domain_info *info;
@@ -5022,8 +5047,8 @@ static int its_init_domain(struct fwnode_handle *handle, struct its_node *its)
 
 	inner_domain = irq_domain_create_hierarchy(its_parent,
 						   its->msi_domain_flags, 0,
-						   handle, &its_domain_ops,
-						   info);
+						   its->fwnode_handle,
+						   &its_domain_ops, info);
 	if (!inner_domain) {
 		kfree(info);
 		return -ENOMEM;
@@ -5049,8 +5074,7 @@ static int its_init_vpe_domain(void)
 	its = list_first_entry(&its_nodes, struct its_node, entry);
 
 	entries = roundup_pow_of_two(nr_cpu_ids);
-	vpe_proxy.vpes = kcalloc(entries, sizeof(*vpe_proxy.vpes),
-				 GFP_KERNEL);
+	vpe_proxy.vpes = kcalloc(entries, sizeof(*vpe_proxy.vpes), GFP_KERNEL);
 	if (!vpe_proxy.vpes)
 		return -ENOMEM;
 
@@ -5073,8 +5097,7 @@ static int its_init_vpe_domain(void)
 	return 0;
 }
 
-static int __init its_compute_its_list_map(struct resource *res,
-					   void __iomem *its_base)
+static int __init its_compute_its_list_map(struct its_node *its)
 {
 	int its_number;
 	u32 ctlr;
@@ -5088,94 +5111,74 @@ static int __init its_compute_its_list_map(struct resource *res,
 	its_number = find_first_zero_bit(&its_list_map, GICv4_ITS_LIST_MAX);
 	if (its_number >= GICv4_ITS_LIST_MAX) {
 		pr_err("ITS@%pa: No ITSList entry available!\n",
-		       &res->start);
+		       &its->phys_base);
 		return -EINVAL;
 	}
 
-	ctlr = readl_relaxed(its_base + GITS_CTLR);
+	ctlr = readl_relaxed(its->base + GITS_CTLR);
 	ctlr &= ~GITS_CTLR_ITS_NUMBER;
 	ctlr |= its_number << GITS_CTLR_ITS_NUMBER_SHIFT;
-	writel_relaxed(ctlr, its_base + GITS_CTLR);
-	ctlr = readl_relaxed(its_base + GITS_CTLR);
-	if ((ctlr & GITS_CTLR_ITS_NUMBER) != (its_number << GITS_CTLR_ITS_NUMBER_SHIFT)) {
+	writel_relaxed(ctlr, its->base + GITS_CTLR);
+	ctlr = readl_relaxed(its->base + GITS_CTLR);
+	if ((ctlr & GITS_CTLR_ITS_NUMBER) !=
+	    (its_number << GITS_CTLR_ITS_NUMBER_SHIFT)) {
 		its_number = ctlr & GITS_CTLR_ITS_NUMBER;
 		its_number >>= GITS_CTLR_ITS_NUMBER_SHIFT;
 	}
 
 	if (test_and_set_bit(its_number, &its_list_map)) {
-		pr_err("ITS@%pa: Duplicate ITSList entry %d\n",
-		       &res->start, its_number);
+		pr_err("ITS@%pa: Duplicate ITSList entry %d\n", &its->phys_base,
+		       its_number);
 		return -EINVAL;
 	}
 
 	return its_number;
 }
 
-static int __init its_probe_one(struct resource *res,
-				struct fwnode_handle *handle, int numa_node)
+static int __init its_probe_one(struct its_node *its)
 {
-	struct its_node *its;
-	void __iomem *its_base;
-	u64 baser, tmp, typer;
+	u64 baser, tmp;
 	struct page *page;
 	u32 ctlr;
 	int err;
 	gfp_t gfp_flags;
 
-	its_base = its_map_one(res, &err);
-	if (!its_base)
-		return err;
-
-	pr_info("ITS %pR\n", res);
-
-	its = kzalloc(sizeof(*its), GFP_KERNEL);
-	if (!its) {
-		err = -ENOMEM;
-		goto out_unmap;
-	}
-
-	raw_spin_lock_init(&its->lock);
-	mutex_init(&its->dev_alloc_lock);
-	INIT_LIST_HEAD(&its->entry);
-	INIT_LIST_HEAD(&its->its_device_list);
-	typer = gic_read_typer(its_base + GITS_TYPER);
-	its->typer = typer;
-	its->base = its_base;
-	its->phys_base = res->start;
 	if (is_v4(its)) {
-		if (!(typer & GITS_TYPER_VMOVP)) {
-			err = its_compute_its_list_map(res, its_base);
+		if (!(its->typer & GITS_TYPER_VMOVP)) {
+			err = its_compute_its_list_map(its);
 			if (err < 0)
-				goto out_free_its;
+				goto out;
 
 			its->list_nr = err;
 
 			pr_info("ITS@%pa: Using ITS number %d\n",
-				&res->start, err);
+				&its->phys_base, err);
 		} else {
-			pr_info("ITS@%pa: Single VMOVP capable\n", &res->start);
+			pr_info("ITS@%pa: Single VMOVP capable\n",
+				&its->phys_base);
 		}
 
 		if (is_v4_1(its)) {
-			u32 svpet = FIELD_GET(GITS_TYPER_SVPET, typer);
+			u32 svpet = FIELD_GET(GITS_TYPER_SVPET, its->typer);
 
-			its->sgir_base = ioremap(res->start + SZ_128K, SZ_64K);
+			its->sgir_base =
+				ioremap(its->phys_base + SZ_128K, SZ_64K);
 			if (!its->sgir_base) {
 				err = -ENOMEM;
-				goto out_free_its;
+				goto out;
 			}
 
-			its->mpidr = readl_relaxed(its_base + GITS_MPIDR);
+			its->mpidr = readl_relaxed(its->base + GITS_MPIDR);
 
 			pr_info("ITS@%pa: Using GICv4.1 mode %08x %08x\n",
-				&res->start, its->mpidr, svpet);
+				&its->phys_base, its->mpidr, svpet);
 		}
 	}
 
-	its->numa_node = numa_node;
-
 	gfp_flags = GFP_KERNEL | __GFP_ZERO;
-	if (of_machine_is_compatible("rockchip,rk3568") || of_machine_is_compatible("rockchip,rk3566") || of_machine_is_compatible("rockchip,rk3588"))
+	if (of_machine_is_compatible("rockchip,rk3568") ||
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		gfp_flags |= GFP_DMA32;
 	page = alloc_pages_node(its->numa_node, gfp_flags,
 				get_order(ITS_CMD_QUEUE_SZ));
@@ -5185,11 +5188,6 @@ static int __init its_probe_one(struct resource *res,
 	}
 	its->cmd_base = (void *)page_address(page);
 	its->cmd_write = its->cmd_base;
-	its->fwnode_handle = handle;
-	its->get_msi_base = its_irq_get_msi_base;
-	its->msi_domain_flags = IRQ_DOMAIN_FLAG_ISOLATED_MSI;
-
-	its_enable_quirks(its);
 
 	err = its_alloc_tables(its);
 	if (err)
@@ -5199,10 +5197,8 @@ static int __init its_probe_one(struct resource *res,
 	if (err)
 		goto out_free_tables;
 
-	baser = (virt_to_phys(its->cmd_base)	|
-		 GITS_CBASER_RaWaWb		|
-		 GITS_CBASER_InnerShareable	|
-		 (ITS_CMD_QUEUE_SZ / SZ_4K - 1)	|
+	baser = (virt_to_phys(its->cmd_base) | GITS_CBASER_RaWaWb |
+		 GITS_CBASER_InnerShareable | (ITS_CMD_QUEUE_SZ / SZ_4K - 1) |
 		 GITS_CBASER_VALID);
 
 	gits_write_cbaser(baser, its->base + GITS_CBASER);
@@ -5212,8 +5208,8 @@ static int __init its_probe_one(struct resource *res,
 		tmp &= ~GITS_CBASER_SHAREABILITY_MASK;
 
 	if (of_machine_is_compatible("rockchip,rk3568") ||
-	     of_machine_is_compatible("rockchip,rk3566") ||
-	     of_machine_is_compatible("rockchip,rk3588"))
+	    of_machine_is_compatible("rockchip,rk3566") ||
+	    of_machine_is_compatible("rockchip,rk3588"))
 		tmp &= ~GITS_CBASER_SHAREABILITY_MASK;
 
 	if ((tmp ^ baser) & GITS_CBASER_SHAREABILITY_MASK) {
@@ -5239,7 +5235,7 @@ static int __init its_probe_one(struct resource *res,
 		ctlr |= GITS_CTLR_ImDe;
 	writel_relaxed(ctlr, its->base + GITS_CTLR);
 
-	err = its_init_domain(handle, its);
+	err = its_init_domain(its);
 	if (err)
 		goto out_free_tables;
 
@@ -5256,17 +5252,15 @@ out_free_cmd:
 out_unmap_sgir:
 	if (its->sgir_base)
 		iounmap(its->sgir_base);
-out_free_its:
-	kfree(its);
-out_unmap:
-	iounmap(its_base);
-	pr_err("ITS@%pa: failed probing (%d)\n", &res->start, err);
+out:
+	pr_err("ITS@%pa: failed probing (%d)\n", &its->phys_base, err);
 	return err;
 }
 
 static bool gic_rdists_supports_plpis(void)
 {
-	return !!(gic_read_typer(gic_data_rdist_rd_base() + GICR_TYPER) & GICR_TYPER_PLPIS);
+	return !!(gic_read_typer(gic_data_rdist_rd_base() + GICR_TYPER) &
+		  GICR_TYPER_PLPIS);
 }
 
 static int redist_disable_lpis(void)
@@ -5417,14 +5411,61 @@ static int __init its_reset_one(struct resource *res)
 }
 
 static const struct of_device_id its_device_id[] = {
-	{	.compatible	= "arm,gic-v3-its",	},
+	{
+		.compatible = "arm,gic-v3-its",
+	},
 	{},
 };
+
+static struct its_node __init *
+its_node_init(struct resource *res, struct fwnode_handle *handle, int numa_node)
+{
+	void __iomem *its_base;
+	struct its_node *its;
+	int err;
+
+	its_base = its_map_one(res, &err);
+	if (!its_base)
+		return NULL;
+
+	pr_info("ITS %pR\n", res);
+
+	its = kzalloc(sizeof(*its), GFP_KERNEL);
+	if (!its)
+		goto out_unmap;
+
+	raw_spin_lock_init(&its->lock);
+	mutex_init(&its->dev_alloc_lock);
+	INIT_LIST_HEAD(&its->entry);
+	INIT_LIST_HEAD(&its->its_device_list);
+
+	its->typer = gic_read_typer(its_base + GITS_TYPER);
+	its->base = its_base;
+	its->phys_base = res->start;
+	its->get_msi_base = its_irq_get_msi_base;
+	its->msi_domain_flags = IRQ_DOMAIN_FLAG_ISOLATED_MSI;
+
+	its->numa_node = numa_node;
+	its->fwnode_handle = handle;
+
+	return its;
+
+out_unmap:
+	iounmap(its_base);
+	return NULL;
+}
+
+static void its_node_destroy(struct its_node *its)
+{
+	iounmap(its->base);
+	kfree(its);
+}
 
 static int __init its_of_probe(struct device_node *node)
 {
 	struct device_node *np;
 	struct resource res;
+	int err;
 
 	/*
 	 * Make sure *all* the ITS are reset before we probe any, as
@@ -5434,8 +5475,6 @@ static int __init its_of_probe(struct device_node *node)
 	 */
 	for (np = of_find_matching_node(node, its_device_id); np;
 	     np = of_find_matching_node(np, its_device_id)) {
-		int err;
-
 		if (!of_device_is_available(np) ||
 		    !of_property_read_bool(np, "msi-controller") ||
 		    of_address_to_resource(np, 0, &res))
@@ -5448,6 +5487,8 @@ static int __init its_of_probe(struct device_node *node)
 
 	for (np = of_find_matching_node(node, its_device_id); np;
 	     np = of_find_matching_node(np, its_device_id)) {
+		struct its_node *its;
+
 		if (!of_device_is_available(np))
 			continue;
 		if (!of_property_read_bool(np, "msi-controller")) {
@@ -5461,7 +5502,16 @@ static int __init its_of_probe(struct device_node *node)
 			continue;
 		}
 
-		its_probe_one(&res, &np->fwnode, of_node_to_nid(np));
+		its = its_node_init(&res, &np->fwnode, of_node_to_nid(np));
+		if (!its)
+			return -ENOMEM;
+
+		its_enable_quirks(its);
+		err = its_probe_one(its);
+		if (err) {
+			its_node_destroy(its);
+			return err;
+		}
 	}
 	return 0;
 }
@@ -5473,9 +5523,9 @@ static int __init its_of_probe(struct device_node *node)
 #ifdef CONFIG_ACPI_NUMA
 struct its_srat_map {
 	/* numa node id */
-	u32	numa_node;
+	u32 numa_node;
 	/* GIC ITS ID */
-	u32	its_id;
+	u32 its_id;
 };
 
 static struct its_srat_map *its_srat_maps __initdata;
@@ -5499,7 +5549,7 @@ static int __init gic_acpi_match_srat_its(union acpi_subtable_headers *header,
 }
 
 static int __init gic_acpi_parse_srat_its(union acpi_subtable_headers *header,
-			 const unsigned long end)
+					  const unsigned long end)
 {
 	int node;
 	struct acpi_srat_gic_its_affinity *its_affinity;
@@ -5510,7 +5560,7 @@ static int __init gic_acpi_parse_srat_its(union acpi_subtable_headers *header,
 
 	if (its_affinity->header.length < sizeof(*its_affinity)) {
 		pr_err("SRAT: Invalid header length %d in ITS affinity\n",
-			its_affinity->header.length);
+		       its_affinity->header.length);
 		return -EINVAL;
 	}
 
@@ -5540,21 +5590,20 @@ static void __init acpi_table_parse_srat_its(void)
 	int count;
 
 	count = acpi_table_parse_entries(ACPI_SIG_SRAT,
-			sizeof(struct acpi_table_srat),
-			ACPI_SRAT_TYPE_GIC_ITS_AFFINITY,
-			gic_acpi_match_srat_its, 0);
+					 sizeof(struct acpi_table_srat),
+					 ACPI_SRAT_TYPE_GIC_ITS_AFFINITY,
+					 gic_acpi_match_srat_its, 0);
 	if (count <= 0)
 		return;
 
-	its_srat_maps = kmalloc_array(count, sizeof(struct its_srat_map),
-				      GFP_KERNEL);
+	its_srat_maps =
+		kmalloc_array(count, sizeof(struct its_srat_map), GFP_KERNEL);
 	if (!its_srat_maps)
 		return;
 
-	acpi_table_parse_entries(ACPI_SIG_SRAT,
-			sizeof(struct acpi_table_srat),
-			ACPI_SRAT_TYPE_GIC_ITS_AFFINITY,
-			gic_acpi_parse_srat_its, 0);
+	acpi_table_parse_entries(ACPI_SIG_SRAT, sizeof(struct acpi_table_srat),
+				 ACPI_SRAT_TYPE_GIC_ITS_AFFINITY,
+				 gic_acpi_parse_srat_its, 0);
 }
 
 /* free the its_srat_maps after ITS probing */
@@ -5563,9 +5612,16 @@ static void __init acpi_its_srat_maps_free(void)
 	kfree(its_srat_maps);
 }
 #else
-static void __init acpi_table_parse_srat_its(void)	{ }
-static int __init acpi_get_its_numa_node(u32 its_id) { return NUMA_NO_NODE; }
-static void __init acpi_its_srat_maps_free(void) { }
+static void __init acpi_table_parse_srat_its(void)
+{
+}
+static int __init acpi_get_its_numa_node(u32 its_id)
+{
+	return NUMA_NO_NODE;
+}
+static void __init acpi_its_srat_maps_free(void)
+{
+}
 #endif
 
 static int __init gic_acpi_parse_madt_its(union acpi_subtable_headers *header,
@@ -5573,6 +5629,7 @@ static int __init gic_acpi_parse_madt_its(union acpi_subtable_headers *header,
 {
 	struct acpi_madt_generic_translator *its_entry;
 	struct fwnode_handle *dom_handle;
+	struct its_node *its;
 	struct resource res;
 	int err;
 
@@ -5597,11 +5654,18 @@ static int __init gic_acpi_parse_madt_its(union acpi_subtable_headers *header,
 		goto dom_err;
 	}
 
-	err = its_probe_one(&res, dom_handle,
-			acpi_get_its_numa_node(its_entry->translation_id));
+	its = its_node_init(&res, dom_handle,
+			    acpi_get_its_numa_node(its_entry->translation_id));
+	if (!its) {
+		err = -ENOMEM;
+		goto node_err;
+	}
+
+	err = its_probe_one(its);
 	if (!err)
 		return 0;
 
+node_err:
 	iort_deregister_domain_token(its_entry->translation_id);
 dom_err:
 	irq_domain_free_fwnode(dom_handle);
@@ -5615,10 +5679,10 @@ static int __init its_acpi_reset(union acpi_subtable_headers *header,
 	struct resource res;
 
 	its_entry = (struct acpi_madt_generic_translator *)header;
-	res = (struct resource) {
-		.start	= its_entry->base_address,
-		.end	= its_entry->base_address + ACPI_GICV3_ITS_MEM_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
+	res = (struct resource){
+		.start = its_entry->base_address,
+		.end = its_entry->base_address + ACPI_GICV3_ITS_MEM_SIZE - 1,
+		.flags = IORESOURCE_MEM,
 	};
 
 	return its_reset_one(&res);
@@ -5640,7 +5704,9 @@ static void __init its_acpi_probe(void)
 	acpi_its_srat_maps_free();
 }
 #else
-static void __init its_acpi_probe(void) { }
+static void __init its_acpi_probe(void)
+{
+}
 #endif
 
 int __init its_lpi_memreserve_init(void)
@@ -5656,8 +5722,7 @@ int __init its_lpi_memreserve_init(void)
 	gic_rdists->cpuhp_memreserve_state = CPUHP_INVALID;
 	state = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
 				  "irqchip/arm/gicv3/memreserve:online",
-				  its_cpu_memreserve_lpi,
-				  NULL);
+				  its_cpu_memreserve_lpi, NULL);
 	if (state < 0)
 		return state;
 
