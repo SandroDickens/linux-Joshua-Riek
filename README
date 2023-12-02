@@ -1,18 +1,20 @@
-Linux kernel
-============
+# 1. clone源码
+```shell
+git clone --depth=1 -b linux-6.6.y https://github.com/SandroDickens/linux-rockchip-v6.git
+```
 
-There are several guides for kernel developers and users. These guides can
-be rendered in a number of formats, like HTML and PDF. Please read
-Documentation/admin-guide/README.rst first.
+# 2. config
+```shell
+touch .scmversion
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- rockchip_linux_defconfig
+```
 
-In order to build the documentation, use ``make htmldocs`` or
-``make pdfdocs``.  The formatted documentation can also be read online at:
-
-    https://www.kernel.org/doc/html/latest/
-
-There are various text files in the Documentation/ subdirectory,
-several of them using the Restructured Text markup notation.
-
-Please read the Documentation/process/changes.rst file, as it contains the
-requirements for building and running the kernel, and information about
-the problems which may result by upgrading your kernel.
+# 3. 编译
+## 3.1 编译成deb包
+```shell
+make KERNELRELEASE="$(make kernelversion)-rockchip" KBUILD_IMAGE="arch/arm64/boot/Image" CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j "$(nproc)" bindeb-pkg
+```
+## 3.2 编译成二进制包
+```shell
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs -j$(nproc)
+```
