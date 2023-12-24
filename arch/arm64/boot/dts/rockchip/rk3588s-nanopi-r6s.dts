@@ -18,7 +18,7 @@
 	};
 
 	chosen {
-		stdout-path = "serial2:1500000n8";
+		stdout-path = "serial2:115200n8";
 	};
 
 	leds {
@@ -447,7 +447,7 @@
 	bus-width = <4>;
 	cap-sd-highspeed;
 	disable-wp;
-	max-frequency = <150000000>;
+	max-frequency = <11520000>;
 	no-mmc;
 	no-sdio;
 	sd-uhs-sdr104;

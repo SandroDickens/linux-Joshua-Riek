@@ -17,7 +17,7 @@
 	};
 
 	chosen {
-		stdout-path = "serial2:1500000n8";
+		stdout-path = "serial2:115200n8";
 	};
 
 	vcc12v_dcin: vcc12v-dcin-regulator {
@@ -364,7 +364,7 @@
 };
 
 &sdmmc {
-	max-frequency = <150000000>;
+	max-frequency = <11520000>;
 	no-sdio;
 	no-mmc;
 	bus-width = <4>;
